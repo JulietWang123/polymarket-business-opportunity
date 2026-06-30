@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket 与预测市场深度分析报告 & 业务机会分析</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --ink: #101828;
+      --muted: #526071;
+      --light: #7c8797;
+      --line: #d8e0ea;
+      --deep: #0d1b2f;
+      --blue: #1e63d6;
+      --blue-2: #e7f0ff;
+      --green: #0b7a5f;
+      --amber: #a46100;
+      --red: #b42318;
+      --shadow: 0 24px 70px rgba(16, 24, 40, .10);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      width: 0;
+      height: 3px;
+      background: var(--blue);
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 13px 28px;
+      border-bottom: 1px solid rgba(216, 224, 234, .78);
+      background: rgba(245, 247, 251, .92);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      font-weight: 800;
+      color: var(--deep);
+      white-space: nowrap;
+    }
+    .brand span { color: var(--blue); }
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .nav a {
+      padding: 5px 8px;
+      border-radius: 4px;
+    }
+    .nav a:hover, .nav a.active {
+      background: var(--blue-2);
+      color: var(--blue);
+    }
+
+    .hero {
+      position: relative;
+      min-height: calc(100svh - 55px);
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(13, 27, 47, .96), rgba(13, 27, 47, .82) 48%, rgba(13, 27, 47, .50)),
+        radial-gradient(circle at 78% 30%, rgba(54, 119, 246, .34), transparent 32%),
+        #0d1b2f;
+      color: #fff;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(90deg, rgba(0,0,0,.28), rgba(0,0,0,.85));
+    }
+    .market-field {
+      position: absolute;
+      right: -5vw;
+      top: 11vh;
+      width: min(54vw, 780px);
+      height: min(64vh, 640px);
+      opacity: .88;
+    }
+    .node {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #7db0ff;
+      box-shadow: 0 0 26px rgba(125, 176, 255, .88);
+      animation: pulse 3.4s ease-in-out infinite;
+    }
+    .node.big { width: 18px; height: 18px; background: #fff; }
+    .node:nth-child(1) { left: 10%; top: 54%; }
+    .node:nth-child(2) { left: 26%; top: 28%; animation-delay: .2s; }
+    .node:nth-child(3) { left: 42%; top: 68%; animation-delay: .6s; }
+    .node:nth-child(4) { left: 60%; top: 38%; animation-delay: .9s; }
+    .node:nth-child(5) { left: 75%; top: 62%; animation-delay: 1.1s; }
+    .node:nth-child(6) { left: 84%; top: 18%; animation-delay: 1.4s; }
+    .wire {
+      position: absolute;
+      height: 1px;
+      transform-origin: left center;
+      background: linear-gradient(90deg, rgba(255,255,255,.55), rgba(125,176,255,.05));
+      animation: flow 5s linear infinite;
+    }
+    .wire.w1 { left: 11%; top: 55%; width: 250px; transform: rotate(-35deg); }
+    .wire.w2 { left: 28%; top: 31%; width: 270px; transform: rotate(31deg); }
+    .wire.w3 { left: 43%; top: 69%; width: 230px; transform: rotate(-38deg); }
+    .wire.w4 { left: 61%; top: 40%; width: 210px; transform: rotate(34deg); }
+    .wire.w5 { left: 75%; top: 63%; width: 160px; transform: rotate(-62deg); }
+    .curve {
+      position: absolute;
+      left: 8%;
+      right: 6%;
+      bottom: 16%;
+      height: 180px;
+      border-bottom: 2px solid rgba(255,255,255,.18);
+      border-left: 2px solid rgba(255,255,255,.12);
+    }
+    .spark {
+      position: absolute;
+      left: 12%;
+      bottom: 19%;
+      width: 80%;
+      height: 120px;
+      background: linear-gradient(120deg, transparent 0 8%, rgba(125,176,255,.85) 8% 9%, transparent 9% 24%, rgba(255,255,255,.78) 24% 25%, transparent 25% 44%, rgba(125,176,255,.92) 44% 45%, transparent 45% 70%, rgba(255,255,255,.72) 70% 71%, transparent 71%);
+      clip-path: polygon(0 70%, 16% 50%, 32% 58%, 48% 18%, 64% 42%, 82% 30%, 100% 9%, 100% 100%, 0 100%);
+      opacity: .42;
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 2;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 72px 28px 40px;
+    }
+    .eyebrow {
+      color: #9fc2ff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      animation: enter .8s ease both;
+    }
+    h1 {
+      max-width: 760px;
+      margin: 18px 0 18px;
+      font-size: clamp(38px, 6vw, 82px);
+      line-height: 1.03;
+      letter-spacing: 0;
+      animation: enter .9s ease .08s both;
+    }
+    .hero-copy {
+      max-width: 680px;
+      margin: 0;
+      color: #dbe7ff;
+      font-size: clamp(16px, 1.7vw, 20px);
+      animation: enter .9s ease .16s both;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+      animation: enter .9s ease .22s both;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 10px 16px;
+      border-radius: 5px;
+      border: 1px solid rgba(255,255,255,.28);
+      font-weight: 800;
+      font-size: 14px;
+      transition: transform .2s ease, background .2s ease, border-color .2s ease;
+    }
+    .button.primary { background: #fff; color: var(--deep); border-color: #fff; }
+    .button:hover { transform: translateY(-2px); text-decoration: none; }
+    .hero-strip {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      max-width: 1180px;
+      margin: 54px auto 0;
+      padding: 0 28px 30px;
+    }
+    .hero-stat {
+      padding: 18px 18px 16px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      animation: rise .7s ease both;
+    }
+    .hero-stat:nth-child(2) { animation-delay: .08s; }
+    .hero-stat:nth-child(3) { animation-delay: .16s; }
+    .hero-stat:nth-child(4) { animation-delay: .24s; }
+    .hero-stat b { display: block; font-size: 22px; line-height: 1.2; }
+    .hero-stat span { display: block; margin-top: 5px; color: #b9c9e7; font-size: 13px; }
+
+    main { max-width: 1180px; margin: 0 auto; padding: 0 28px 88px; }
+    section { scroll-margin-top: 82px; }
+    .section {
+      padding: 72px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+      gap: 60px;
+      align-items: start;
+      margin-bottom: 28px;
+    }
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h2 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    h3 {
+      margin: 34px 0 12px;
+      font-size: 22px;
+      line-height: 1.3;
+    }
+    p { color: var(--muted); margin: 0 0 14px; }
+    ul { color: var(--muted); margin: 10px 0 20px; padding-left: 22px; }
+    li { margin: 6px 0; }
+    strong { color: var(--ink); }
+    .divider-title {
+      margin: 28px 0 14px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-weight: 900;
+      color: var(--deep);
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .matrix-cell {
+      min-height: 150px;
+      padding: 20px;
+      background: var(--surface);
+      transition: transform .2s ease, background .2s ease;
+    }
+    .matrix-cell:hover { transform: translateY(-3px); background: #f9fbff; }
+    .matrix-cell b { display: block; margin-bottom: 8px; font-size: 18px; }
+    .matrix-cell span { color: var(--muted); font-size: 14px; }
+    .status {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .ok { background: #e8f7f1; color: var(--green); }
+    .warn { background: #fff4df; color: var(--amber); }
+    .bad { background: #ffe9e7; color: var(--red); }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      background: var(--surface);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--deep); color: #fff; font-weight: 800; }
+    tr:nth-child(even) td { background: #f7f9fc; }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 36px;
+      align-items: start;
+    }
+    .panel {
+      padding: 24px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .panel h3 { margin-top: 0; }
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .step {
+      position: relative;
+      padding: 13px 14px;
+      border-left: 3px solid var(--blue);
+      background: #f8fbff;
+      transition: transform .2s ease, background .2s ease;
+    }
+    .step:hover { transform: translateX(4px); background: var(--blue-2); }
+
+    .opportunities {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(190px, 1fr));
+      gap: 1px;
+      overflow-x: auto;
+      background: var(--line);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .op {
+      min-height: 250px;
+      padding: 20px;
+      background: var(--surface);
+    }
+    .op .num { color: var(--blue); font-family: var(--mono); font-weight: 900; }
+    .op b { display: block; margin: 16px 0 10px; font-size: 18px; line-height: 1.25; }
+    .op span { color: var(--muted); font-size: 14px; }
+
+    .agent {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      background: var(--deep);
+      box-shadow: var(--shadow);
+      color: #fff;
+    }
+    .agent-copy { padding: 34px; }
+    .agent-copy p { color: #c5d3ea; }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: rgba(255,255,255,.14);
+    }
+    .score {
+      padding: 22px;
+      background: rgba(255,255,255,.07);
+      transition: background .2s ease;
+    }
+    .score:hover { background: rgba(255,255,255,.12); }
+    .score b { display: block; font-size: 32px; line-height: 1; }
+    .score span { display: block; margin-top: 8px; color: #c5d3ea; font-size: 13px; }
+
+    .api-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .api {
+      padding: 20px;
+      background: var(--surface);
+      transition: transform .2s ease, background .2s ease;
+    }
+    .api:hover { transform: translateY(-3px); background: #f8fbff; }
+    .api code {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-weight: 900;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .api p { font-size: 14px; }
+    .price {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--deep);
+      font-weight: 900;
+    }
+
+    .timeline {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .phase {
+      min-height: 245px;
+      padding: 22px;
+      background: var(--surface);
+    }
+    .phase small {
+      display: block;
+      color: var(--blue);
+      font-weight: 900;
+      font-family: var(--mono);
+    }
+    .phase b { display: block; margin: 12px 0 8px; font-size: 19px; }
+    .phase p { font-size: 14px; }
+    .final {
+      margin-top: 40px;
+      padding: 34px;
+      color: #fff;
+      background: var(--deep);
+      box-shadow: var(--shadow);
+    }
+    .final p { color: #d7e2f5; font-size: 18px; }
+    .sources {
+      columns: 2;
+      column-gap: 36px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .sources li { break-inside: avoid; margin-bottom: 9px; }
+
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: .68; }
+      50% { transform: scale(1.55); opacity: 1; }
+    }
+    @keyframes flow {
+      0% { opacity: .18; }
+      50% { opacity: .72; }
+      100% { opacity: .18; }
+    }
+
+    @media (max-width: 980px) {
+      .topbar { align-items: flex-start; flex-direction: column; padding: 12px 18px; }
+      .nav { justify-content: flex-start; }
+      .hero { min-height: auto; }
+      .hero-inner { padding: 54px 20px 28px; }
+      .market-field { opacity: .32; width: 95vw; right: -34vw; top: 20vh; }
+      .hero-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 20px 24px; margin-top: 34px; }
+      main { padding: 0 20px 64px; }
+      .section { padding: 54px 0; }
+      .section-head, .split, .agent { grid-template-columns: 1fr; gap: 24px; }
+      .matrix, .api-grid { grid-template-columns: 1fr; }
+      .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sources { columns: 1; }
+    }
+    @media (max-width: 620px) {
+      .hero-strip, .score-grid, .timeline { grid-template-columns: 1fr; }
+      .topbar { position: static; }
+      h1 { font-size: 36px; }
+      .section-head { gap: 16px; }
+      .agent-copy, .final { padding: 24px; }
+      .opportunities { grid-template-columns: repeat(5, 240px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#top">Polymarket<span> Intelligence</span></a>
+    <nav class="nav" id="nav">
+      <a href="#audit">核心判断</a>
+      <a href="#market">市场结构</a>
+      <a href="#risk">风险</a>
+      <a href="#opportunity">机会</a>
+      <a href="#agentport">AgentPort</a>
+      <a href="#roadmap">路线图</a>
+    </nav>
+  </header>
+
+  <section class="hero" id="top">
+    <div class="market-field" aria-hidden="true">
+      <div class="wire w1"></div><div class="wire w2"></div><div class="wire w3"></div><div class="wire w4"></div><div class="wire w5"></div>
+      <div class="node big"></div><div class="node"></div><div class="node big"></div><div class="node"></div><div class="node big"></div><div class="node"></div>
+      <div class="curve"></div><div class="spark"></div>
+    </div>
+    <div class="hero-inner">
+      <div class="eyebrow">Research page · 2026-06-30</div>
+      <h1>Polymarket 与预测市场深度分析报告 & 业务机会分析</h1>
+      <p class="hero-copy">从市场结构、监管风险、业务机会到 AgentPort 产品方案：把现实世界的不确定性转化为 Agent 可调用的概率与风险判断层。</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#agentport">查看 AgentPort 方案</a>
+        <a class="button" href="#audit">查看核心判断</a>
+      </div>
+    </div>
+    <div class="hero-strip">
+      <div class="hero-stat"><b>7/10</b><span>AgentPort 综合可行性：值得做，但必须垂直切入</span></div>
+      <div class="hero-stat"><b>低 → 高</b><span>风险随“只读数据 → 自动交易”快速上升</span></div>
+      <div class="hero-stat"><b>5 类</b><span>预测市场业务机会：API、解释、审计、风控、中文事件</span></div>
+      <div class="hero-stat"><b>x402</b><span>适合作为机器支付展示，但不应是唯一支付方式</span></div>
+    </div>
+  </section>
+
+  <main>
+    <section class="section" id="audit">
+      <div class="section-head">
+        <div>
+          <p class="kicker">01 / CORE JUDGMENT</p>
+          <h2>预测市场的价值正在从交易转向概率基础设施。</h2>
+        </div>
+        <p class="lead">Polymarket 的主流化不只来自交易热度，更来自事件概率数据、媒体引用、合规化路径和 AI Agent 可调用场景。</p>
+      </div>
+
+      <div class="matrix">
+        <div class="matrix-cell">
+          <span class="status ok">核心资产</span>
+          <b>事件概率数据网络</b>
+          <span>交易是起点，长期价值在于高频概率信号、历史数据、媒体引用和机构/Agent 可调用能力。</span>
+        </div>
+        <div class="matrix-cell">
+          <span class="status ok">主流化路径</span>
+          <b>合规与机构分发</b>
+          <span>Polymarket US、ICE、MLB 等合作显示预测市场正在靠近合规金融、体育娱乐和机构数据分发。</span>
+        </div>
+        <div class="matrix-cell">
+          <span class="status warn">必要约束</span>
+          <b>价格不是绝对真相</b>
+          <span>市场价格有信息价值，但会受流动性、参与者结构、操纵风险和结算歧义影响。</span>
+        </div>
+        <div class="matrix-cell">
+          <span class="status warn">风险边界</span>
+          <b>信息层优于交易层</b>
+          <span>创业团队更适合做只读数据、解释、风控和审计；自动下单与自建撮合会显著抬高风险。</span>
+        </div>
+        <div class="matrix-cell">
+          <span class="status ok">产品机会</span>
+          <b>从概率到工作流</b>
+          <span>概率 API、变化解释、结算风险评分和告警系统能嵌入媒体、研究、交易和 Agent 工作流。</span>
+        </div>
+        <div class="matrix-cell">
+          <span class="status ok">AgentPort 定位</span>
+          <b>概率与风险判断层</b>
+          <span>AgentPort 应先验证预测数据调用和付费，再逐步扩展为 Web3 服务发现与聚合平台。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="market">
+      <div class="section-head">
+        <div>
+          <p class="kicker">02 / MARKET STRUCTURE</p>
+          <h2>Polymarket 的护城河不是链，而是市场质量。</h2>
+        </div>
+        <p class="lead">预测市场的价格是一种有噪声的概率信号。它的价值来自流动性、市场运营、结算可信度和被媒体/机构/Agent 反复引用的习惯。</p>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <h3>为什么预测市场主流化</h3>
+          <ul>
+            <li><strong>事件合约进入新闻叙事：</strong>选举、利率、体育、战争、公司事件都适合概率化表达。</li>
+            <li><strong>传统预测信任下降：</strong>用户更愿意看“用钱表达”的连续价格。</li>
+            <li><strong>加密基础设施成熟：</strong>稳定币、低成本链、链下撮合降低交易摩擦。</li>
+            <li><strong>AI 需要结构化概率：</strong>Agent 做规划、研究和风控时，概率比新闻标题更适合进入决策链。</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Polymarket 的真实优势</h3>
+          <div class="flow">
+            <div class="step">流动性网络效应：热门市场的深度、价差和成交速度形成惯性</div>
+            <div class="step">品牌心智：媒体开始把 Polymarket 当作事件概率参考</div>
+            <div class="step">市场运营：标题、结算条件、分类和激励决定市场质量</div>
+            <div class="step">数据资产：历史价格、成交和结果可用于校准与模型训练</div>
+            <div class="step">合规转型：Polymarket US 提升机构可接受度</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="business">
+      <div class="section-head">
+        <div>
+          <p class="kicker">03 / BUSINESS MODEL</p>
+          <h2>交易费只是入口，事件概率数据才是长期资产。</h2>
+        </div>
+        <p class="lead">如果 Polymarket 只是撮合用户交易，天花板取决于交易量和费率；如果它成为金融终端、媒体、体育联盟和 Agent 共同引用的概率源，商业空间会更大。</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>收入方向</th><th>说明</th><th>成熟度</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>交易费</td><td>部分市场 taker fee，配合 maker/taker rebate 改善流动性。</td><td>已开始</td></tr>
+            <tr><td>数据分发</td><td>事件概率、历史数据和实时价格可进入金融终端、媒体和机构产品。</td><td>高潜力</td></tr>
+            <tr><td>API 与开发者服务</td><td>市场数据、订单簿、结算结果、事件分类等可形成开发者产品。</td><td>中高</td></tr>
+            <tr><td>机构风控工具</td><td>异常波动、鲸鱼交易、结算争议、内幕交易线索监控。</td><td>中高</td></tr>
+            <tr><td>体育/娱乐合作</td><td>官方数据、品牌曝光、完整性框架和粉丝互动。</td><td>高</td></tr>
+            <tr><td>白标与基础设施</td><td>为媒体、交易平台和 Agent 平台提供概率组件。</td><td>中</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="risk">
+      <div class="section-head">
+        <div>
+          <p class="kicker">04 / RISK LAYER</p>
+          <h2>监管风险不是开关，而是阶梯。</h2>
+        </div>
+        <p class="lead">只读数据和研究分析相对安全；交易信号、自动下单、资金托管和自建撮合会显著抬高合规、安全和声誉成本。</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>产品层级</th><th>风险等级</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>只读公开数据聚合</td><td>低</td><td>接近信息服务，适合 MVP 起步。</td></tr>
+            <tr><td>概率解释与研究分析</td><td>低到中</td><td>不提供收益承诺和交易建议时风险可控。</td></tr>
+            <tr><td>交易信号与策略建议</td><td>中到高</td><td>可能触及投资建议、博彩推荐和适当性问题。</td></tr>
+            <tr><td>自动下单/代客交易</td><td>高</td><td>涉及牌照、KYC、授权、安全和地域限制。</td></tr>
+            <tr><td>自建撮合交易市场</td><td>极高</td><td>需要处理交易所、衍生品、博彩、支付和市场监管问题。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="opportunity">
+      <div class="section-head">
+        <div>
+          <p class="kicker">05 / OPPORTUNITIES</p>
+          <h2>不要复制 Polymarket，站到它的上游和旁路。</h2>
+        </div>
+        <p class="lead">更好的机会在信息层、解释层、审计层和 Agent 工具层，而不是直接做一个交易市场。</p>
+      </div>
+
+      <div class="opportunities">
+        <div class="op"><span class="num">01</span><b>Prediction API</b><span>聚合 Polymarket、Kalshi、新闻、宏观数据和赔率，输出结构化概率、来源和置信度。</span></div>
+        <div class="op"><span class="num">02</span><b>市场解释层</b><span>解释概率为什么变化，把价格波动转成中文因果链。</span></div>
+        <div class="op"><span class="num">03</span><b>结算规则审计</b><span>识别市场标题、数据源、截止时间和 oracle 争议风险。</span></div>
+        <div class="op"><span class="num">04</span><b>风控 SaaS</b><span>监控鲸鱼账户、异常波动、疑似内幕交易和跨市场套利。</span></div>
+        <div class="op"><span class="num">05</span><b>中文事件概率</b><span>覆盖华语宏观、公司、文化和体育事件，只做信息服务，不撮合交易。</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="agentport">
+      <div class="section-head">
+        <div>
+          <p class="kicker">06 / AGENTPORT</p>
+          <h2>AgentPort 应先做概率与风险判断层。</h2>
+        </div>
+        <p class="lead">AgentPort 的方向成立，但早期不要做大而全的 Web3 API marketplace。先用预测市场数据做可验证、可付费、可嵌入 Agent 工作流的垂直产品。</p>
+      </div>
+
+      <div class="agent">
+        <div class="agent-copy">
+          <h3>推荐定位</h3>
+          <p>AgentPort 是 Agent 可调用的概率与风险判断层。预测市场数据是入口，x402 是支付能力展示，长期目标是 Web3 服务发现与调用网络。</p>
+          <div class="flow">
+            <div class="step">Agent / Developer / Researcher</div>
+            <div class="step">MCP Server / REST API / x402 paid request</div>
+            <div class="step">事件搜索、概率查询、变化解释、风险评分</div>
+            <div class="step">Polymarket / Kalshi / 新闻 / 宏观数据 / 自研模型</div>
+          </div>
+        </div>
+        <div class="score-grid">
+          <div class="score"><b>8/10</b><span>方向价值：Agent 工具调用和机器支付是明确趋势</span></div>
+          <div class="score"><b>8/10</b><span>预测切口：高频、可验证、适合 x402 展示</span></div>
+          <div class="score"><b>5/10</b><span>平台冷启动：不能一开始做 marketplace</span></div>
+          <div class="score"><b>7/10</b><span>综合可行性：值得做，前提是垂直 MVP</span></div>
+        </div>
+      </div>
+
+      <h3 class="divider-title">MVP API Surface</h3>
+      <div class="api-grid">
+        <div class="api"><code>/events/search</code><p>自然语言搜索事件、市场和相似问题。</p><span class="price">免费或极低价</span></div>
+        <div class="api"><code>/probability/latest</code><p>返回多源概率、成交量、流动性、更新时间。</p><span class="price">$0.001-$0.01/次</span></div>
+        <div class="api"><code>/probability/explain</code><p>解释概率变化原因，生成中文摘要。</p><span class="price">$0.02-$0.20/次</span></div>
+        <div class="api"><code>/market/risk-score</code><p>评估结算歧义、流动性不足、操纵风险。</p><span class="price">$0.01-$0.10/次</span></div>
+        <div class="api"><code>/backtest/source</code><p>回测不同预测源在不同类别上的表现。</p><span class="price">企业版</span></div>
+        <div class="api"><code>/alerts/create</code><p>创建概率变化、异常成交和价差提醒。</p><span class="price">按月/按量</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="gtm">
+      <div class="section-head">
+        <div>
+          <p class="kicker">07 / GO TO MARKET</p>
+          <h2>先服务真实调用，而不是先搭平台。</h2>
+        </div>
+        <p class="lead">推广重点不是“我们支持 x402”，而是“Agent 可以用一个接口得到事件概率、变化原因和风险评分”。</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>用户</th><th>痛点</th><th>切入方式</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Web3 研究/交易 Agent 开发者</td><td>需要实时概率、事件搜索、风险评分。</td><td>MCP Server、SDK、示例 Agent。</td></tr>
+            <tr><td>中文加密研究团队/KOL/媒体</td><td>需要把英文预测市场转成中文解释和图表。</td><td>事件页、嵌入组件、每日概率变化。</td></tr>
+            <tr><td>小型基金/做市/风控团队</td><td>需要异常监控、回测和风险预警。</td><td>Dashboard、API、企业试用。</td></tr>
+            <tr><td>Agent 平台和钱包</td><td>需要 x402 机器支付 demo 和高频工具。</td><td>联合 demo、生态合作、收入分成。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="roadmap">
+      <div class="section-head">
+        <div>
+          <p class="kicker">08 / ROADMAP</p>
+          <h2>四阶段路线图。</h2>
+        </div>
+        <p class="lead">每个阶段只推进一个核心验证：先验证调用，再验证质量，再验证付费，最后才验证平台化。</p>
+      </div>
+
+      <div class="timeline">
+        <div class="phase"><small>PHASE 0 · 4-6 周</small><b>垂直 MVP</b><p>Prediction API、MCP Server、x402 demo、10-20 个高质量事件页。不做交易执行，不开放 marketplace。</p></div>
+        <div class="phase"><small>PHASE 1 · 2-3 月</small><b>质量比较</b><p>多源概率比较、Brier score、结算风险评分、概率变化解释和异常提醒。</p></div>
+        <div class="phase"><small>PHASE 2 · 3-6 月</small><b>企业场景</b><p>风控 Dashboard、机构 API、团队权限、审计日志和定制事件池。</p></div>
+        <div class="phase"><small>PHASE 3 · 6-12 月</small><b>平台开放</b><p>第三方服务商 SDK、服务质量认证、x402 分账结算和更多 Web3 数据品类。</p></div>
+      </div>
+
+      <div class="final">
+        <h2>最终判断</h2>
+        <p>不要先做 Web3 版 RapidAPI，也不要做中文版 Polymarket。先做 Agent 可调用的概率与风险判断层，让 Agent 用一个接口获得未来事件概率、变化原因和可信度评估。</p>
+      </div>
+    </section>
+
+    <section class="section" id="sources">
+      <div class="section-head">
+        <div>
+          <p class="kicker">09 / SOURCES</p>
+          <h2>资料来源。</h2>
+        </div>
+        <p class="lead">页面内容整理自公开资料和本地两版报告，关键事实以官方文件和文档为优先。</p>
+      </div>
+      <ol class="sources">
+        <li>CFTC: Polymarket 2022 enforcement action and civil monetary penalty</li>
+        <li>CFTC: QCX LLC d/b/a Polymarket US Designated Contract Market filing</li>
+        <li>ICE: Strategic investment in Polymarket</li>
+        <li>Polymarket Docs: CLOB trading overview, API authentication, fees</li>
+        <li>TechCrunch: X names Polymarket as official prediction market partner</li>
+        <li>MLB: Polymarket partnership and integrity framework</li>
+        <li>Coinbase Developer Docs: x402 overview and HTTP 402 concepts</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+    const progress = document.getElementById('progress');
+    const navLinks = [...document.querySelectorAll('.nav a')];
+    const sections = navLinks.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+
+    function onScroll() {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = `${Math.max(0, Math.min(1, window.scrollY / max)) * 100}%`;
+
+      let current = sections[0]?.id;
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top < 120) current = section.id;
+      }
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${current}`);
+      });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>
